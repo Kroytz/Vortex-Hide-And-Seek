@@ -1,0 +1,63 @@
+﻿"Phrases"
+{
+    // ===========================
+    // Color prefixes (Chat only)
+    // ===========================
+
+    // @default         "\x01"
+    // @red             "\x02"
+    // @lgreen          "\x03"
+    // @green           "\x04"
+    // \n \n            "double line"
+
+    "hns countdown"
+    {
+        "#format"       "{1:d}"
+        "en"            "{1} seconds to hide"
+        "chi"           "追踪者于 {1} 秒后出发"
+    }
+
+    "hns roundstart"
+    {
+        "en"            "Ready or not, here we come!"
+        "chi"           "小心咯, 我们来了!"
+    }
+
+    "hns allow slash"
+    {
+        "#format"       "{1:d}"
+        "en"            "Seekers have lost {1} rounds in a row, they can now use slash."
+        "chi"           "追踪者们已经输了 {1} 回合了, 他们现在可以用轻击了."
+    }
+
+    "hns force swap"
+    {
+        "#format"       "{1:d}"
+        "en"            "%i rounds have passed^nSwitching Teams.."
+        "chi"           "已经过了 {1} 回合了\n该换队了..."
+    }
+
+    "hns seekers win"
+    {
+        "en"            "Seekers Win^nSwitching Teams..."
+        "chi"           "追踪者胜利\n更换队伍..."
+    }
+
+    "hns hiders win"
+    {
+        "en"            "Hiders Win"
+        "chi"           "匿踪者胜利"
+    }
+
+    "hns seeker info"
+    {
+        "en"            "You are: <font color='#0000FF'>Seeker</font>\nTarget: <font color='#00FFFF'>Kill all Hiders</font>\nWeapon: <font color='#00FF00'>Knife</font>"
+        "chi"           "你是：<font color='#0000FF'>追踪者</font>\n目标：<font color='#00FFFF'>杀死所有匿踪者</font>\n可用武器：<font color='#00FF00'>小刀</font>"
+    }
+
+    "hns hider info"
+    {
+        "en"            "You are: <font color='#FF0000'>Hider</font>\nTarget: <font color='#00FFFF'>Survive</font>\nWeapon: <font color='#00FF00'>Flashbang, Frost nade</font>"
+        "chi"           "你是：<font color='#FF0000'>匿踪者</font>\n目标：<font color='#00FFFF'>活下来</font>\n可用武器：<font color='#00FF00'>闪光弹, 冰冻弹</font>"
+    }
+}

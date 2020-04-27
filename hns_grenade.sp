@@ -140,7 +140,7 @@ void GranadaCongela(int client, float origin[3])
     float targetOrigin[3];
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (!IsClientInGame(i) || !IsPlayerAlive(i) || (GetClientTeam(i) == CS_TEAM_CT))
+        if (!IsClientInGame(i) || !IsPlayerAlive(i) || (GetClientTeam(i) == CS_TEAM_T))
         {
             continue;
         }
@@ -245,19 +245,19 @@ public void Grenade_SpawnPost(int entity)
     
     if (!strcmp(classname, "flashbang_projectile"))
     {
-        BeamFollowCreate(entity, FlashColor);
+        // BeamFollowCreate(entity, FlashColor);
     } 
     else if (!strcmp(classname, "smokegrenade_projectile") || !strcmp(classname, "decoy_projectile"))
     //else if (!strcmp(classname, "smokegrenade_projectile"))
     {
         if (b_smoke_freeze)
         {
-            BeamFollowCreate(entity, FreezeColor);
+            // BeamFollowCreate(entity, FreezeColor);
             CreateTimer(1.3, CreateEvent_SmokeDetonate, entity, TIMER_FLAG_NO_MAPCHANGE);
         }
         else
         {
-            BeamFollowCreate(entity, SmokeColor);
+            // BeamFollowCreate(entity, SmokeColor);
         }
 
         int iReference = EntIndexToEntRef(entity);
