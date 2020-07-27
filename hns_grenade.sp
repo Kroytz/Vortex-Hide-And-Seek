@@ -45,7 +45,7 @@ public void OnPluginStart()
     h_greneffects_trails = CreateConVar("hns_greneffect_trails", "1", "Enables/Disables Grenade Trails", 0, true, 0.0, true, 1.0);
     
     h_greneffects_smoke_freeze = CreateConVar("hns_greneffect_smoke_freeze", "1", "Changes a smoke grenade to a freeze grenade", 0, true, 0.0, true, 1.0);
-    h_greneffects_smoke_freeze_distance = CreateConVar("hns_greneffect_smoke_freeze_distance", "600", "The freeze grenade distance", 0, true, 100.0);
+    h_greneffects_smoke_freeze_distance = CreateConVar("hns_greneffect_smoke_freeze_distance", "300", "The freeze grenade distance", 0, true, 100.0);
     h_greneffects_smoke_freeze_duration = CreateConVar("hns_greneffect_smoke_freeze_duration", "4", "The freeze duration in seconds", 0, true, 1.0);
     
     // Load cvar

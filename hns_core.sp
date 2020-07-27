@@ -81,6 +81,16 @@ public void OnMapEnd()
     gServerData.PurgeTimers();
 }
 
+public void OnClientPostAdminCheck(int client)
+{
+    SDKHook(client, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+}
+
+public void OnClientDisconnect(int client)
+{
+    SDKUnhook(client, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+}
+
 public Action OnJoinTeamListened(int client, const char[] command, int argc)
 {
     if (!IsPlayerExist(client, false) || argc < 1)
@@ -269,6 +279,36 @@ public Action Event_OnRoundEnd(Event event, const char[] name, bool dontBroadcas
     delete gServerData.CountdownTimer;
 }
 
+public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float& damage, int& damagetype, int& weapon, float damageForce[3], float damagePosition[3])
+{
+    if (IsPlayerExist(attacker))
+    {
+        int iTeam = GetClientTeam(attacker);
+        switch (iTeam)
+        {
+            case CS_TEAM_T: return Plugin_Handled;
+            case CS_TEAM_CT:
+            {
+                if (IsBackstabDamage(damage))
+                {
+                    damage *= 0.5;
+
+                    int iHealth = ToolsGetHealth(victim);
+                    if (float(iHealth) > damage)
+                    {
+                        ToolsSetHealth(victim, iHealth - RoundFloat(damage));
+                        return Plugin_Handled;
+                    }
+
+                    return Plugin_Changed;
+                }
+            }
+        }
+    }
+
+    return Plugin_Continue;
+}
+
 public Action Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
     int userID = event.GetInt("userid");
@@ -340,7 +380,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
                 return Plugin_Continue;
             }
 
-            if ((gServerData.Countdown > 0) && (gServerData.NewRound))
+            if ((gServerData.Countdown >= 0) && (gServerData.NewRound))
             {
                 return Plugin_Handled;
             }
@@ -376,6 +416,9 @@ void GamesGiveEquipment(int client, int team)
             // Give nades
             GivePlayerItem(client, "weapon_smokegrenade");
             GivePlayerItem(client, "weapon_flashbang");
+
+            // Give knife for fix
+            GivePlayerItem(client, "weapon_knife");
         }
     }
 }
@@ -574,5 +617,33 @@ stock void TranslationPrintHudTextAll(Handle hSync, float x, float y, float hold
             // Print translated phrase to the client screen
             UTIL_CreateClientHud(hSync, i, x, y, holdTime, r, g, b, a, effect, fxTime, fadeIn, fadeOut, sTranslation);
         }
+    }
+}
+
+stock bool IsBackstabDamage(float damage)
+{
+    //LS -> 40 | RS -> 65 | LB -> 90 | RB -> 180
+    if(damage == 90.0 || damage == 180.0)
+        return true;
+    else
+        return false;
+}
+
+int ToolsGetHealth(int entity, bool bMax = false)
+{
+    // Gets health of the entity
+    return GetEntProp(entity, Prop_Data, bMax ? "m_iMaxHealth" : "m_iHealth");
+}
+
+void ToolsSetHealth(int entity, int iValue, bool bSet = false)
+{
+    // Sets health of the entity
+    SetEntProp(entity, Prop_Send, "m_iHealth", iValue);
+    
+    // If set is true, then set max health
+    if (bSet) 
+    {
+        // Sets max health of the entity
+        SetEntProp(entity, Prop_Data, "m_iMaxHealth", iValue);
     }
 }
