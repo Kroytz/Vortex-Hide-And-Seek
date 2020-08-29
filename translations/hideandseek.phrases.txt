@@ -33,13 +33,13 @@
     "hns force swap"
     {
         "#format"       "{1:d}"
-        "en"            "%i rounds have passed^nSwitching Teams.."
+        "en"            "{1} rounds have passed\nSwitching Teams.."
         "chi"           "已经过了 {1} 回合了\n该换队了..."
     }
 
     "hns seekers win"
     {
-        "en"            "Seekers Win^nSwitching Teams..."
+        "en"            "Seekers Win\nSwitching Teams..."
         "chi"           "追踪者胜利\n更换队伍..."
     }
 

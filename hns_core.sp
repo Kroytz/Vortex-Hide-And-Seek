@@ -292,14 +292,16 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
                 if (IsBackstabDamage(damage))
                 {
                     damage *= 0.5;
+                }
 
-                    int iHealth = ToolsGetHealth(victim);
-                    if (float(iHealth) > damage)
-                    {
-                        ToolsSetHealth(victim, iHealth - RoundFloat(damage));
-                        return Plugin_Handled;
-                    }
-
+                int iHealth = ToolsGetHealth(victim);
+                if (float(iHealth) > damage)
+                {
+                    ToolsSetHealth(victim, iHealth - RoundFloat(damage));
+                    return Plugin_Handled;
+                }
+                else
+                {
                     return Plugin_Changed;
                 }
             }
@@ -395,6 +397,13 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
                     return Plugin_Changed;
                 }
             }
+        }
+
+        // Duck speed fix: Set to default velocity.
+        if (buttons & IN_DUCK)
+        {
+            // Set to default (8.0).
+            SetEntPropFloat(client, Prop_Send, "m_flDuckSpeed", 8.0);
         }
     }
 
@@ -645,5 +654,14 @@ void ToolsSetHealth(int entity, int iValue, bool bSet = false)
     {
         // Sets max health of the entity
         SetEntProp(entity, Prop_Data, "m_iMaxHealth", iValue);
+    }
+}
+
+stock void fnInitGameConfOffset(Handle gameConf, int &iOffset, char[] sKey)
+{
+    // Validate offset
+    if ((iOffset = GameConfGetOffset(gameConf, sKey)) == -1)
+    {
+        SetFailState("[GameData Validation] Failed to get offset: \"%s\"", sKey);
     }
 }

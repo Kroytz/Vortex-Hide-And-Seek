@@ -17,8 +17,6 @@
 #define SmokeColor    {75,255,75,255}
 #define FreezeColor    {75,75,255,255}
 
-float NULL_VELOCITY[3] = {0.0, 0.0, 0.0};
-
 int BeamSprite, GlowSprite, g_beamsprite, g_halosprite;
 
 ConVar h_greneffects_enable; bool b_enable;
@@ -199,7 +197,6 @@ bool Freeze(int client, int attacker, float &time)
     }
 
     SetEntityMoveType(client, MOVETYPE_NONE);
-    TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, NULL_VELOCITY);
     
     float vec[3];
     GetClientEyePosition(client, vec);
