@@ -21,9 +21,11 @@ public Plugin myinfo =
     url = "http://github.com/Kroytz"
 };
 
-#define GAMEPLAY_COUNTDOWN 10
-#define GAMEPLAY_ALLOWSLASH 3
-#define GAMEPLAY_FORCESWAP 5
+//  游戏设置
+#define GAMEPLAY_COUNTDOWN 10       // 游戏倒计时
+#define GAMEPLAY_ALLOWSLASH 3       // 输 X 回合允许轻击
+#define GAMEPLAY_FORCESWAP 5        // 输 X 回合强制换边
+#define GAMEPLAY_PROTECTTIME 3.0    // 躲藏者受伤保护时间
 
 enum struct ServerData
 {
@@ -52,6 +54,23 @@ enum struct ServerData
     }
 }
 ServerData gServerData;
+
+enum struct ClientData
+{
+    float  Protect;
+    Handle ProtectTimer;
+
+    void Reset()
+    {
+        this.Protect = 0.0;
+    }
+
+    void PurgeTimers()
+    {
+        this.ProtectTimer = null;
+    }
+}
+ClientData gClientData[MAXPLAYERS+1];
 
 public void OnPluginStart()
 {
@@ -246,6 +265,7 @@ public Action Event_OnRoundEnd(Event event, const char[] name, bool dontBroadcas
             0.1,
             0.35, 0.35,
             "hns seekers win");
+
         GamesSwapTeam();
     }
     else
@@ -289,6 +309,13 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
             case CS_TEAM_T: return Plugin_Handled;
             case CS_TEAM_CT:
             {
+                float flEngineTime = GetEngineTime();
+                if (gClientData[victim].Protect > flEngineTime)
+                {
+                    TranslationPrintToChat(attacker, "hns in protect", gClientData[victim].Protect - flEngineTime);
+                    return Plugin_Handled;
+                }
+
                 if (IsBackstabDamage(damage))
                 {
                     damage *= 0.5;
@@ -298,6 +325,13 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
                 if (float(iHealth) > damage)
                 {
                     ToolsSetHealth(victim, iHealth - RoundFloat(damage));
+
+                    // Damage Protect
+                    gClientData[victim].Protect = flEngineTime + GAMEPLAY_PROTECTTIME;
+                    TranslationPrintToChat(victim, "hns protect start", GAMEPLAY_PROTECTTIME);
+                    CreateTimer(GAMEPLAY_PROTECTTIME, timerClientEndProtect, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+                    SetEntityRenderColor(victim, 233, 16, 16, 230);
+
                     return Plugin_Handled;
                 }
                 else
@@ -309,6 +343,19 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
     }
 
     return Plugin_Continue;
+}
+
+public Action timerClientEndProtect(Handle timer, int userID)
+{
+    int client = GetClientOfUserId(userID);
+
+    if (IsPlayerExist(client))
+    {
+        TranslationPrintToChat(client, "hns protect expire");
+        SetEntityRenderColor(client, 255, 255, 255, 255);
+    }
+
+    return Plugin_Stop;
 }
 
 public Action Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
@@ -328,6 +375,9 @@ public Action Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroad
         SetEntProp(client, Prop_Send, "m_ArmorValue", 100);
         SetEntProp(client, Prop_Send, "m_bHasHelmet", true);
 
+        if(GameRules_GetProp("m_bWarmupPeriod"))
+            return Plugin_Continue;
+
         switch (team)
         {
             case CS_TEAM_CT:
@@ -340,9 +390,6 @@ public Action Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroad
                 TranslationPrintHintText(client, "hns hider info");
             }
         }
-
-        if(GameRules_GetProp("m_bWarmupPeriod"))
-            return Plugin_Continue;
 
         if (gServerData.Countdown <= 0)
         {
