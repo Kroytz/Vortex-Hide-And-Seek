@@ -60,4 +60,24 @@
         "en"            "You are: <font color='#FF0000'>Hider</font>\nTarget: <font color='#00FFFF'>Survive</font>\nWeapon: <font color='#00FF00'>Flashbang, Frost nade</font>"
         "chi"           "你是：<font color='#FF0000'>匿踪者</font>\n目标：<font color='#00FFFF'>活下来</font>\n可用武器：<font color='#00FF00'>闪光弹, 冰冻弹</font>"
     }
+
+    "hns protect start"
+    {
+        "#format"       "{1:.1f}"
+        "en"            "You now have {1} seconds protect of seekers' damage!"
+        "chi"           "你在接下来的 {1} 秒内可以免疫追踪者的攻击!"
+    }
+
+    "hns in protect"
+    {
+        "#format"       "{1:.1f}"
+        "en"            "Your attack target have {1} seconds of knife protection"
+        "chi"           "你的攻击目标还有 {1} 秒的攻击免疫"
+    }
+
+    "hns protect expire"
+    {
+        "en"            "You are no longer protected!"
+        "chi"           "你的攻击免疫时间已结束!"
+    }
 }
