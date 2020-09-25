@@ -80,4 +80,46 @@
         "en"            "You are no longer protected!"
         "chi"           "你的攻击免疫时间已结束!"
     }
+
+    "redie dm bring back end"
+    {
+        "en"            "You will no longer be brought back as a ghost next time you die."
+        "chi"           "下次死后你将 不会 变为鬼魂."
+    }
+
+    "redie dm bring back end"
+    {
+        "en"            "You will be brought back as a ghost next time you die."
+        "chi"           "下次死后你将 会 变为鬼魂."
+    }
+
+    "redie must dead"
+    {
+        "en"            "You must be dead."
+        "chi"           "你必须死亡."
+    }
+
+    "redie must on team"
+    {
+        "en"            "You must be on a team."
+        "chi"           "你必须在队伍中."
+    }
+
+    "redie wait for new round"
+    {
+        "en"            "Please wait for the new round to begin."
+        "chi"           "请等待新回合开始."
+    }
+
+    "redie become ghost"
+    {
+        "en"            "You are now a ghost."
+        "chi"           "你已经成为鬼魂了."
+    }
+
+    "redie announce"
+    {
+        "en"            "Type !redie into chat to respawn as a ghost."
+        "chi"           "输入 !redie 来成为鬼魂."
+    }
 }
