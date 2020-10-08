@@ -1,12 +1,13 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#undef REQUIRE_EXTENSIONS
 #include <clientprefs>
+#include <cstrike>
+#undef REQUIRE_EXTENSIONS
 #undef REQUIRE_PLUGIN
 #pragma tabsize 0
 
-#define VERSION "1.0"
+#define VERSION "1.2"
 #define ADMIN_LEVEL ADMFLAG_ROOT
 #define DEBUG 0
 #define WHITE 0x01
@@ -73,6 +74,9 @@ new Handle:g_hdist_leet_lj = INVALID_HANDLE;
 new Float:g_dist_leet_lj;
 new Handle:g_hdist_ownage_lj = INVALID_HANDLE;
 new Float:g_dist_ownage_lj;
+new Handle: g_ct_jumpstats;
+
+
 new bool:g_js_bPlayerJumped[MAXPLAYERS+1];
 new bool:g_js_bDropJump[MAXPLAYERS+1];
 new bool:g_js_bInvalidGround[MAXPLAYERS+1];
@@ -91,6 +95,9 @@ new bool:g_bLJBlockValidJumpoff[MAXPLAYERS + 1];
 new bool:g_js_bFuncMoveLinear[MAXPLAYERS+1];
 new bool:g_bLastButtonJump[MAXPLAYERS+1];
 new bool:g_bdetailView[MAXPLAYERS+1];
+new bool:g_bFirstTeamJoin[MAXPLAYERS+1];
+
+new g_iCtJumpstats;
 new g_Beam[2];
 new g_js_Personal_LjBlock_Record[MAXPLAYERS+1]=-1;
 new g_js_BhopRank[MAXPLAYERS+1];
@@ -171,15 +178,15 @@ new String:sql_createPlayerjumpstats[] 			= "CREATE TABLE IF NOT EXISTS playerju
 new String:sql_insertPlayerJumpBhop[] 			= "INSERT INTO playerjumpstats (steamid, name, bhoprecord, bhoppre, bhopmax, bhopstrafes, bhopsync, bhopheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%f');";
 new String:sql_insertPlayerJumpLj[] 			= "INSERT INTO playerjumpstats (steamid, name, ljrecord, ljpre, ljmax, ljstrafes, ljsync, ljheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%f');";
 new String:sql_insertPlayerJumpLjBlock[] 		= "INSERT INTO playerjumpstats (steamid, name, ljblockdist, ljblockrecord, ljblockpre, ljblockmax, ljblockstrafes, ljblocksync, ljblockheight) VALUES('%s', '%s', '%i', '%f', '%f', '%f', '%i', '%i', '%f');";
-new String:sql_insertPlayerJumpMultiBhop[] 	= "INSERT INTO playerjumpstats (steamid, name, multibhoprecord, multibhoppre, multibhopmax, multibhopstrafes, multibhopcount, multibhopsync, multibhopheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%i', '%f');";
+new String:sql_insertPlayerJumpMultiBhop[] 		= "INSERT INTO playerjumpstats (steamid, name, multibhoprecord, multibhoppre, multibhopmax, multibhopstrafes, multibhopcount, multibhopsync, multibhopheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%i', '%f');";
 new String:sql_insertPlayerJumpDropBhop[] 		= "INSERT INTO playerjumpstats (steamid, name, dropbhoprecord, dropbhoppre, dropbhopmax, dropbhopstrafes, dropbhopsync, dropbhopheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%f');";
 new String:sql_insertPlayerJumpWJ[] 			= "INSERT INTO playerjumpstats (steamid, name, wjrecord, wjpre, wjmax, wjstrafes, wjsync, wjheight) VALUES('%s', '%s', '%f', '%f', '%f', '%i', '%i', '%f');";
 
 new String:sql_updateLjBlock[] 					= "UPDATE playerjumpstats SET name='%s', ljblockdist ='%i', ljblockrecord ='%f', ljblockpre ='%f', ljblockmax ='%f', ljblockstrafes='%i', ljblocksync='%i', ljblockheight='%f' WHERE steamid = '%s';";
 new String:sql_updateLj[] 						= "UPDATE playerjumpstats SET name='%s', ljrecord ='%f', ljpre ='%f', ljmax ='%f', ljstrafes='%i', ljsync='%i', ljheight='%f' WHERE steamid = '%s';";
-new String:sql_updateBhop[] 						= "UPDATE playerjumpstats SET name='%s', bhoprecord ='%f', bhoppre ='%f', bhopmax ='%f', bhopstrafes='%i', bhopsync='%i', bhopheight='%f' WHERE steamid = '%s';";
+new String:sql_updateBhop[] 					= "UPDATE playerjumpstats SET name='%s', bhoprecord ='%f', bhoppre ='%f', bhopmax ='%f', bhopstrafes='%i', bhopsync='%i', bhopheight='%f' WHERE steamid = '%s';";
 new String:sql_updateMultiBhop[] 				= "UPDATE playerjumpstats SET name='%s', multibhoprecord ='%f', multibhoppre ='%f', multibhopmax ='%f', multibhopstrafes='%i', multibhopcount='%i', multibhopsync='%i', multibhopheight='%f' WHERE steamid = '%s';";
-new String:sql_updateDropBhop[] 					= "UPDATE playerjumpstats SET name='%s', dropbhoprecord ='%f', dropbhoppre ='%f', dropbhopmax ='%f', dropbhopstrafes='%i', dropbhopsync='%i', dropbhopheight='%f' WHERE steamid = '%s';";
+new String:sql_updateDropBhop[] 				= "UPDATE playerjumpstats SET name='%s', dropbhoprecord ='%f', dropbhoppre ='%f', dropbhopmax ='%f', dropbhopstrafes='%i', dropbhopsync='%i', dropbhopheight='%f' WHERE steamid = '%s';";
 new String:sql_updateWJ[] 						= "UPDATE playerjumpstats SET name='%s', wjrecord ='%f', wjpre ='%f', wjmax ='%f', wjstrafes='%i', wjsync='%i', wjheight='%f' WHERE steamid = '%s';";
 
 new String:sql_selectPlayerJumpTopLJBlock[] 	= "SELECT name, ljblockdist, ljblockrecord, ljblockstrafes, steamid FROM playerjumpstats WHERE ljblockdist > -1 ORDER BY ljblockdist DESC, ljblockrecord DESC LIMIT 20";
@@ -191,7 +198,7 @@ new String:sql_selectPlayerJumpTopWJ[] 			= "SELECT name, wjrecord, wjstrafes, s
 new String:sql_selectPlayerJumpLJBlock[] 		= "SELECT steamid, name, ljblockdist, ljblockrecord FROM playerjumpstats WHERE steamid = '%s';";
 new String:sql_selectPlayerJumpLJ[] 			= "SELECT steamid, name, ljrecord FROM playerjumpstats WHERE steamid = '%s';";
 new String:sql_selectPlayerJumpBhop[] 			= "SELECT steamid, name, bhoprecord FROM playerjumpstats WHERE steamid = '%s';";
-new String:sql_selectPlayerJumpMultiBhop[] 	= "SELECT steamid, name, multibhoprecord FROM playerjumpstats WHERE steamid = '%s';";
+new String:sql_selectPlayerJumpMultiBhop[] 		= "SELECT steamid, name, multibhoprecord FROM playerjumpstats WHERE steamid = '%s';";
 new String:sql_selectPlayerJumpWJ[] 			= "SELECT steamid, name, wjrecord FROM playerjumpstats WHERE steamid = '%s';";
 new String:sql_selectPlayerJumpDropBhop[] 		= "SELECT steamid, name, dropbhoprecord FROM playerjumpstats WHERE steamid = '%s';";
 new String:sql_selectJumpStats[] 				= "SELECT steamid, name, bhoprecord,bhoppre,bhopmax,bhopstrafes,bhopsync, ljrecord, ljpre, ljmax, ljstrafes,ljsync, multibhoprecord,multibhoppre, multibhopmax, multibhopstrafes,multibhopcount,multibhopsync, wjrecord, wjpre, wjmax, wjstrafes, wjsync, dropbhoprecord, dropbhoppre, dropbhopmax, dropbhopstrafes, dropbhopsync, ljheight, bhopheight, multibhopheight, dropbhopheight, wjheight,ljblockdist,ljblockrecord, ljblockpre, ljblockmax, ljblockstrafes,ljblocksync, ljblockheight FROM playerjumpstats WHERE (wjrecord > -1.0 OR dropbhoprecord > -1.0 OR ljrecord > -1.0 OR bhoprecord > -1.0 OR multibhoprecord > -1.0) AND steamid = '%s';";
@@ -201,22 +208,22 @@ new String:sql_selectPlayerRankLjBlock[] 		= "SELECT name FROM playerjumpstats W
 new String:sql_selectPlayerRankBhop[] 			= "SELECT name FROM playerjumpstats WHERE bhoprecord >= (SELECT bhoprecord FROM playerjumpstats WHERE steamid = '%s' AND bhoprecord > -1.0) AND bhoprecord  > -1.0 ORDER BY bhoprecord;";
 new String:sql_selectPlayerRankWJ[] 			= "SELECT name FROM playerjumpstats WHERE wjrecord >= (SELECT wjrecord FROM playerjumpstats WHERE steamid = '%s' AND wjrecord > -1.0) AND wjrecord  > -1.0 ORDER BY wjrecord;";
 new String:sql_selectPlayerRankDropBhop[] 		= "SELECT name FROM playerjumpstats WHERE dropbhoprecord >= (SELECT dropbhoprecord FROM playerjumpstats WHERE steamid = '%s' AND dropbhoprecord > -1.0) AND dropbhoprecord  > -1.0 ORDER BY dropbhoprecord;";
-new String:sql_resetBhopRecord[] 			= "UPDATE playerjumpstats SET bhoprecord = '-1.0' WHERE steamid = '%s';";
-new String:sql_resetDropBhopRecord[] 		= "UPDATE playerjumpstats SET dropbhoprecord = '-1.0' WHERE steamid = '%s';";
-new String:sql_resetWJRecord[] 				= "UPDATE playerjumpstats SET wjrecord = '-1.0' WHERE steamid = '%s';";
-new String:sql_resetLjRecord[] 				= "UPDATE playerjumpstats SET ljrecord = '-1.0' WHERE steamid = '%s';";
+new String:sql_resetBhopRecord[] 				= "UPDATE playerjumpstats SET bhoprecord = '-1.0' WHERE steamid = '%s';";
+new String:sql_resetDropBhopRecord[] 			= "UPDATE playerjumpstats SET dropbhoprecord = '-1.0' WHERE steamid = '%s';";
+new String:sql_resetWJRecord[] 					= "UPDATE playerjumpstats SET wjrecord = '-1.0' WHERE steamid = '%s';";
+new String:sql_resetLjRecord[] 					= "UPDATE playerjumpstats SET ljrecord = '-1.0' WHERE steamid = '%s';";
 new String:sql_resetLjBlockRecord[] 			= "UPDATE playerjumpstats SET ljblockdist = '-1' WHERE steamid = '%s';";
-new String:sql_resetMultiBhopRecord[] 		= "UPDATE playerjumpstats SET multibhoprecord = '-1.0' WHERE steamid = '%s';";
+new String:sql_resetMultiBhopRecord[] 			= "UPDATE playerjumpstats SET multibhoprecord = '-1.0' WHERE steamid = '%s';";
 new String:sql_resetJumpStats[] 				= "UPDATE playerjumpstats SET multibhoprecord = '-1.0', ljrecord = '-1.0', wjrecord = '-1.0', dropbhoprecord = '-1.0', bhoprecord = '-1.0', ljblockdist = '-1' WHERE steamid = '%s';";
 
 
 public Plugin:myinfo =
 {
 	name = "KZ JumpStats",
-	author = "1NutWunDeR",
-	description = "",
+	author = "1NutWunDeR, powerind",
+	description = "Modified version of KZJumpStats that has ownages.",
 	version = VERSION,
-	url = ""
+	url = "1.3"
 };
 
 public OnPluginStart()
@@ -229,27 +236,27 @@ public OnPluginStart()
 
 	//ConVars
 	CreateConVar("KZJumpstats_version", VERSION, "KZ Jumpstats Version.", FCVAR_DONTRECORD|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
-	g_hdist_good_lj    	= CreateConVar("js_dist_min_lj", "230.0", "Minimum distance for longjumps to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_pro_lj   	= CreateConVar("js_dist_pro_lj", "245.0", "Minimum distance for longjumps to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 220.0, true, 999.0);
-	g_hdist_leet_lj    	= CreateConVar("js_dist_leet_lj", "250.0", "Minimum distance for longjumps to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 245.0, true, 999.0);
-	g_hdist_ownage_lj    	= CreateConVar("js_dist_ownage_lj", "280.0", "Minimum distance for longjumps to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 245.0, true, 999.0);
-	g_hdist_good_weird  = CreateConVar("js_dist_min_wj", "200.0", "Minimum distance for weird jumps to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_pro_weird  = CreateConVar("js_dist_pro_wj", "260.0", "Minimum distance for weird jumps to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_leet_weird   = CreateConVar("js_dist_leet_wj", "270.0", "Minimum distance for weird jumps to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_ownage_weird   = CreateConVar("js_dist_ownage_wj", "290.0", "Minimum distance for weird jumps to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_good_dropbhop  = CreateConVar("js_dist_min_dropbhop", "230.0", "Minimum distance for drop bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_pro_dropbhop  = CreateConVar("js_dist_pro_dropbhop", "260.0", "Minimum distance for drop bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_leet_dropbhop   = CreateConVar("js_dist_leet_dropbhop", "270.0", "Minimum distance for drop bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_ownage_dropbhop   = CreateConVar("js_dist_ownage_dropbhop", "290.0", "Minimum distance for drop bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_good_bhop  = CreateConVar("js_dist_min_bhop", "240.0", "Minimum distance for bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_pro_bhop  = CreateConVar("js_dist_pro_bhop", "260.0", "Minimum distance for bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_leet_bhop   = CreateConVar("js_dist_leet_bhop", "270.0", "Minimum distance for bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_ownage_bhop   = CreateConVar("js_dist_ownage_bhop", "290.0", "Minimum distance for bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
-	g_hdist_good_multibhop  = CreateConVar("js_dist_min_multibhop", "240.0", "Minimum distance for multi-bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
-	g_hdist_pro_multibhop  = CreateConVar("js_dist_pro_multibhop", "260.0", "Minimum distance for multi-bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
-	g_hdist_leet_multibhop   = CreateConVar("js_dist_leet_multibhop", "270.0", "Minimum distance for multi-bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
-	g_hdist_ownage_multibhop   = CreateConVar("js_dist_ownage_multibhop", "290.0", "Minimum distance for multi-bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
-
+	g_hdist_good_lj    			= CreateConVar("js_dist_min_lj", "230.0", "Minimum distance for longjumps to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_pro_lj   			= CreateConVar("js_dist_pro_lj", "245.0", "Minimum distance for longjumps to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 220.0, true, 999.0);
+	g_hdist_leet_lj    			= CreateConVar("js_dist_leet_lj", "250.0", "Minimum distance for longjumps to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 245.0, true, 999.0);
+	g_hdist_ownage_lj    		= CreateConVar("js_dist_ownage_lj", "280.0", "Minimum distance for longjumps to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 245.0, true, 999.0);
+	g_hdist_good_weird  		= CreateConVar("js_dist_min_wj", "200.0", "Minimum distance for weird jumps to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_pro_weird  			= CreateConVar("js_dist_pro_wj", "260.0", "Minimum distance for weird jumps to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_leet_weird   		= CreateConVar("js_dist_leet_wj", "270.0", "Minimum distance for weird jumps to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_ownage_weird   		= CreateConVar("js_dist_ownage_wj", "290.0", "Minimum distance for weird jumps to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_good_dropbhop  		= CreateConVar("js_dist_min_dropbhop", "230.0", "Minimum distance for drop bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_pro_dropbhop  		= CreateConVar("js_dist_pro_dropbhop", "260.0", "Minimum distance for drop bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_leet_dropbhop   	= CreateConVar("js_dist_leet_dropbhop", "270.0", "Minimum distance for drop bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_ownage_dropbhop   	= CreateConVar("js_dist_ownage_dropbhop", "290.0", "Minimum distance for drop bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_good_bhop  			= CreateConVar("js_dist_min_bhop", "240.0", "Minimum distance for bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_pro_bhop  			= CreateConVar("js_dist_pro_bhop", "260.0", "Minimum distance for bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_leet_bhop   		= CreateConVar("js_dist_leet_bhop", "270.0", "Minimum distance for bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_ownage_bhop   		= CreateConVar("js_dist_ownage_bhop", "290.0", "Minimum distance for bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 999.0);
+	g_hdist_good_multibhop  	= CreateConVar("js_dist_min_multibhop", "240.0", "Minimum distance for multi-bhops to be considered good [Client Message]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
+	g_hdist_pro_multibhop  		= CreateConVar("js_dist_pro_multibhop", "260.0", "Minimum distance for multi-bhops to be considered pro [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
+	g_hdist_leet_multibhop   	= CreateConVar("js_dist_leet_multibhop", "270.0", "Minimum distance for multi-bhops to be considered leet [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
+	g_hdist_ownage_multibhop 	= CreateConVar("js_dist_ownage_multibhop", "290.0", "Minimum distance for multi-bhops to be considered ownage [JumpStats Colorchat All]", FCVAR_NOTIFY, true, 200.0, true, 9999.0);
+	g_ct_jumpstats				= CreateConVar("js_ct_jumpstats", "0.0", "Disable CT Jumpstats? 1 = Disable 0 = Enable", FCVAR_NOTIFY, true, 1.0, true, 0.0);
 
 	////////////////////////////////////////////////////////////////
 
@@ -321,6 +328,11 @@ public OnPluginStart()
 	HookConVarChange(g_hdist_ownage_lj, OnSettingChanged);
 
 	////////////////////////////////////////////////////////////////
+	
+	g_iCtJumpstats			= GetConVarInt(g_ct_jumpstats);
+	HookConVarChange(g_ct_jumpstats, OnSettingChanged);
+	
+	////////////////////////////////////////////////////////////////
 
 	//config
 	AutoExecConfig(true, "KZJumpStats");
@@ -334,23 +346,24 @@ public OnPluginStart()
 	RegConsoleCmd("sm_ljblock", Client_Ljblock,"registers a lj block");
 	RegConsoleCmd("sm_colorchat", Client_Colorchat, "on/off jumpstats messages of others in chat");
 	RegConsoleCmd("sm_jumptop", Client_Top, "jump top");
-	RegAdminCmd("sm_resetjumpstats", Admin_DropPlayerJump, ADMIN_LEVEL, "[Stats] Resets jump stats - requires z flag");
-	RegAdminCmd("sm_resetallljrecords", Admin_ResetAllLjRecords, ADMIN_LEVEL, "[Stats] Resets all lj records - requires z flag");
-	RegAdminCmd("sm_resetallljblockrecords", Admin_ResetAllLjBlockRecords, ADMIN_LEVEL, "[Stats] Resets all lj block records - requires z flag");
-	RegAdminCmd("sm_resetallwjrecords", Admin_ResetAllWjRecords, ADMIN_LEVEL, "[Stats] Resets all wj records - requires z flag");
-	RegAdminCmd("sm_resetallbhoprecords", Admin_ResetAllBhopRecords, ADMIN_LEVEL, "[Stats] Resets all bhop records - requires z flag");
-	RegAdminCmd("sm_resetalldropbhopecords", Admin_ResetAllDropBhopRecords, ADMIN_LEVEL, "[Stats] Resets all drop bjop records - requires z flag");
-	RegAdminCmd("sm_resetallmultibhoprecords", Admin_ResetAllMultiBhopRecords, ADMIN_LEVEL, "[Stats] Resets all multi bhop records - requires z flag");
-	RegAdminCmd("sm_resetljrecord", Admin_ResetLjRecords, ADMIN_LEVEL, "[Stats] Resets lj record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetljblockrecord", Admin_ResetLjBlockRecords, ADMIN_LEVEL, "[Stats] Resets lj block record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetbhoprecord", Admin_ResetBhopRecords, ADMIN_LEVEL, "[Stats] Resets bhop record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetdropbhoprecord", Admin_ResetDropBhopRecords, ADMIN_LEVEL, "[Stats] Resets drop bhop record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetwjrecord", Admin_ResetWjRecords, ADMIN_LEVEL, "[Stats] Resets wj record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetmultibhoprecord", Admin_ResetMultiBhopRecords, ADMIN_LEVEL, "[Stats] Resets multi bhop record for given steamid - requires z flag");
-	RegAdminCmd("sm_resetplayerjumpstats", Admin_ResetPlayerJumpstats, ADMIN_LEVEL, "[Stats] Resets jump stats for given steamid - requires z flag");
+	RegAdminCmd("sm_resetjumpstats", Admin_DropPlayerJump, ADMIN_LEVEL, "[JS] Resets jump stats - requires z flag");
+	RegAdminCmd("sm_resetallljrecords", Admin_ResetAllLjRecords, ADMIN_LEVEL, "[JS] Resets all lj records - requires z flag");
+	RegAdminCmd("sm_resetallljblockrecords", Admin_ResetAllLjBlockRecords, ADMIN_LEVEL, "[JS] Resets all lj block records - requires z flag");
+	RegAdminCmd("sm_resetallwjrecords", Admin_ResetAllWjRecords, ADMIN_LEVEL, "[JS] Resets all wj records - requires z flag");
+	RegAdminCmd("sm_resetallbhoprecords", Admin_ResetAllBhopRecords, ADMIN_LEVEL, "[JS] Resets all bhop records - requires z flag");
+	RegAdminCmd("sm_resetalldropbhopecords", Admin_ResetAllDropBhopRecords, ADMIN_LEVEL, "[JS] Resets all drop bjop records - requires z flag");
+	RegAdminCmd("sm_resetallmultibhoprecords", Admin_ResetAllMultiBhopRecords, ADMIN_LEVEL, "[JS] Resets all multi bhop records - requires z flag");
+	RegAdminCmd("sm_resetljrecord", Admin_ResetLjRecords, ADMIN_LEVEL, "[JS] Resets lj record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetljblockrecord", Admin_ResetLjBlockRecords, ADMIN_LEVEL, "[JS] Resets lj block record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetbhoprecord", Admin_ResetBhopRecords, ADMIN_LEVEL, "[JS] Resets bhop record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetdropbhoprecord", Admin_ResetDropBhopRecords, ADMIN_LEVEL, "[JS] Resets drop bhop record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetwjrecord", Admin_ResetWjRecords, ADMIN_LEVEL, "[JS] Resets wj record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetmultibhoprecord", Admin_ResetMultiBhopRecords, ADMIN_LEVEL, "[JS] Resets multi bhop record for given steamid - requires z flag");
+	RegAdminCmd("sm_resetplayerjumpstats", Admin_ResetPlayerJumpstats, ADMIN_LEVEL, "[JS] Resets jump stats for given steamid - requires z flag");
 
 	//Hooks
 	HookEvent("player_jump", Event_OnJump, EventHookMode_Pre);
+	HookEvent("player_spawn", Event_OnPlayerSpawn, EventHookMode_Post);
 
 	//plugin loaded?
 	for(new z=1;z<=MaxClients;z++)
@@ -406,9 +419,11 @@ public OnClientPutInServer(client)
 	SDKHook(client, SDKHook_StartTouch, Hook_OnTouch);
 
 	g_bdetailView[client] = false;
+	g_bFirstTeamJoin[client] = true;
 	g_js_bPlayerJumped[client] = false;
 	g_bPrestrafeTooHigh[client] = false;
 	g_js_bFuncMoveLinear[client] = false;
+	g_bInfoPanel[client] = true;
 	g_js_Last_Ground_Frames[client] = 11;
 	g_js_MultiBhop_Count[client] = 1;
 	g_js_GroundFrames[client] = 0;
@@ -435,6 +450,22 @@ public OnClientPutInServer(client)
 	db_viewPersonalDropBhopRecord(client, szSteamId);
 	db_viewPersonalLJBlockRecord(client, szSteamId);
 	db_viewPersonalLJRecord(client, szSteamId);
+}
+
+public Action:Event_OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(client != 0 && g_bFirstTeamJoin[client])
+	{
+		CreateTimer(15.0, AdvertTimer, client,TIMER_FLAG_NO_MAPCHANGE);
+		g_bFirstTeamJoin[client] = false;
+	}
+}
+
+public Action:AdvertTimer(Handle:timer, any:client)
+{
+	if (IsValidClient(client) && !IsFakeClient(client))
+		PrintToChat(client, "This server is using %cKZTimer Jumpstats by %cpowerind", GRAY, YELLOW);
 }
 
 public Hook_OnTouch(client, other)
@@ -593,6 +624,9 @@ public OnSettingChanged(Handle:convar, const String:oldValue[], const String:new
 
 	if(convar == g_hdist_ownage_lj)
 		g_dist_ownage_lj = StringToFloat(newValue[0]);
+		
+	if(convar == g_ct_jumpstats)
+		g_iCtJumpstats = StringToInt(newValue[0]);
 
 ///////////////////////////////////////////////////////////////
 
@@ -976,7 +1010,7 @@ public CenterHudAlive(client)
 			Format(sResult, sizeof(sResult), "%s _", sResult);
 
 		if (IsValidEntity(client) && 1 <= client <= MaxClients)
-			PrintHintText(client,"<b>Last Jump</b>: %s\n<b>Speed</b>: %.1f u/s (%.0f)\n%s",g_js_szLastJumpDistance[client],g_fSpeed[client],g_js_fPreStrafe[client],sResult);
+			PrintHintText(client,"<pre><font color='#948d8d'><b>Last Jump</b>: %s\n<b>Speed</b>: %.1f u/s (%.0f)\n%s</font></pre>",g_js_szLastJumpDistance[client],g_fSpeed[client],g_js_fPreStrafe[client],sResult);
 	}
 }
 
@@ -1438,11 +1472,11 @@ public Prethink (client, Float:pos[3], Float:vel)
 	g_js_fJump_JumpOff_PosLastHeight[client] = g_js_fJump_JumpOff_Pos[client][2];
 }
 
-public Postthink(client)
-{
-	if (!IsValidClient(client))
-		return;
+public Postthink(client) {
 
+	if(!IsValidClient(client)) 
+		return;
+	
 	new ground_frames = g_js_GroundFrames[client];
 	new strafes = g_js_StrafeCount[client];
 	g_js_GroundFrames[client] = 0;
@@ -1565,6 +1599,12 @@ public Postthink(client)
 		PostThinkPost(client, ground_frames);
 		return;
 	}
+	// ct jumpstats
+	if(GetClientTeam(client) != CS_TEAM_T && g_iCtJumpstats == 1) {
+		Format(g_js_szLastJumpDistance[client], 256, "<font color='#ff0000'>T Only Buddy</font>");
+		PostThinkPost(client, ground_frames);
+		return;
+	}
 
 
 	new bool: ValidJump=false;
@@ -1577,7 +1617,6 @@ public Postthink(client)
 		Format(szVr, 16, "Pre");
 		new bool: prestrafe;
 		prestrafe = true;
-
 		//strafe hack block (aimware is pretty smart :/) (2/2)
 		if (g_js_fPreStrafe[client] > 278.0 || g_js_fPreStrafe[client] < 200.0)
 		{
@@ -1630,7 +1669,7 @@ public Postthink(client)
 				PrintToChat(client, "%t", "ClientLongJump2",MOSSGREEN,WHITE,GRAY, g_js_fJump_Distance[client],LIMEGREEN,strafes,GRAY, LIMEGREEN, g_js_fPreStrafe[client], GRAY,LIMEGREEN,g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY,LIMEGREEN, sync,PERCENT,GRAY,sBlockDist);
 
 			PrintToConsole(client, "        ");
-			PrintToConsole(client, "[Stats] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.0f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], szVr,g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
+			PrintToConsole(client, "[JS] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.0f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], szVr,g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
 			PrintToConsole(client, "%s", szStrafeStats);
 		}
 		else if (g_js_fJump_Distance[client] >= g_dist_pro_lj && g_js_fJump_Distance[client] < g_dist_leet_lj)
@@ -1639,7 +1678,7 @@ public Postthink(client)
 			CreateTimer(0.1, BhopCheck, client,TIMER_FLAG_NO_MAPCHANGE);
 			//chat & sound client
 			PrintToConsole(client, "        ");
-			PrintToConsole(client, "[Stats] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.0f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
+			PrintToConsole(client, "[JS] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.0f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
 			PrintToConsole(client, "%s", szStrafeStats);
 			if (prestrafe)
 				PrintToChat(client, "%t", "ClientLongJump3",MOSSGREEN,WHITE,GREEN,GRAY,GREEN,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN,g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY,LIMEGREEN, sync,PERCENT,GRAY,sBlockDist);
@@ -1663,18 +1702,17 @@ public Postthink(client)
 		//ownage?
 		else if (g_js_fJump_Distance[client] >= g_dist_ownage_lj && g_js_fMax_Speed_Final[client] > 275.0)
 		{
-			// strafe hack protection
-			if (strafes == 0)
-			{
-				Format(g_js_szLastJumpDistance[client], 256, "<font color='#948d8d'>invalid</font>");
-				PostThinkPost(client, ground_frames);
-				return;
-			}
+			// strafe hack protection & Ladderbug fix. We'll only apply this to ownages since the types below aren't really impressive with ladderbugs :P
+				if (strafes == 0 || g_js_fPreStrafe[client] > 251.0 || g_js_fPreStrafe[client] < 245.0) {
+					Format(g_js_szLastJumpDistance[client], 256, "<font color='#948d8d'>invalid</font>");
+					PostThinkPost(client, ground_frames);
+					return;
+				}
 			Format(g_js_szLastJumpDistance[client], 256, "<font color='#e3ad39'><b>%.2f units</b></font>", g_js_fJump_Distance[client]);
 			g_js_OwnageJump_Count[client]++;
 			//client
 			PrintToConsole(client, "        ");
-			PrintToConsole(client, "[Stats] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.3f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
+			PrintToConsole(client, "[JS] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.3f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
 			PrintToConsole(client, "%s", szStrafeStats);
 			if (prestrafe)
 				PrintToChat(client, "%t", "ClientLongJump3",MOSSGREEN,WHITE,YELLOW,GRAY,YELLOW,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY,LIMEGREEN, sync,PERCENT,GRAY,sBlockDist);
@@ -1706,7 +1744,7 @@ public Postthink(client)
 					if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 						for (new i = 1; i <= MaxClients+1; i++) { 
 							if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-								EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+								ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 							}
 						}
 					}
@@ -1729,7 +1767,7 @@ public Postthink(client)
 				g_js_LeetJump_Count[client]++;
 				//client
 				PrintToConsole(client, "        ");
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.3f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a LongJump [%i Strafes | %.3f %s | %.3f Max | Height %.1f | %i%c Sync]%s",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client],szVr, g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT,sBlockDistCon);
 				PrintToConsole(client, "%s", szStrafeStats);
 				if (prestrafe)
 					PrintToChat(client, "%t", "ClientLongJump3",MOSSGREEN,WHITE,DARKRED,GRAY,DARKRED,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY,LIMEGREEN, sync,PERCENT,GRAY,sBlockDist);
@@ -1823,7 +1861,7 @@ public Postthink(client)
 			g_js_LeetJump_Count[client]=0;
 			PrintToChat(client, "%t", "ClientMultiBhop1",MOSSGREEN,WHITE, GRAY, g_js_fJump_Distance[client],LIMEGREEN, strafes, GRAY, LIMEGREEN, g_js_fPreStrafe[client], GRAY, LIMEGREEN, sync,PERCENT,GRAY);
 			PrintToConsole(client, "        ");
-			PrintToConsole(client, "[Stats] %s jumped %0.4f units with a MultiBhop [%i Strafes | %3.f Pre | %3.f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
+			PrintToConsole(client, "[JS] %s jumped %0.4f units with a MultiBhop [%i Strafes | %3.f Pre | %3.f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
 			PrintToConsole(client, "%s", szStrafeStats);
 		}
 		else
@@ -1834,7 +1872,7 @@ public Postthink(client)
 				g_js_LeetJump_Count[client]=0;
 				//Client
 				PrintToConsole(client, "        ");
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max |  Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max |  Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
 				PrintToConsole(client, "%s", szStrafeStats);
 				PrintToChat(client, "%t", "ClientMultiBhop2",MOSSGREEN,WHITE,GREEN,GRAY,GREEN,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN,g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN,szBhopCount,GRAY,LIMEGREEN, sync,PERCENT,GRAY);
 
@@ -1867,7 +1905,7 @@ public Postthink(client)
 				g_js_OwnageJump_Count[client]++;
 				//Client
 				PrintToConsole(client, "        ");
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
 				PrintToConsole(client, "%s", szStrafeStats);
 				PrintToChat(client, "%t", "ClientMultiBhop2",MOSSGREEN,WHITE,YELLOW,GRAY,YELLOW,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN,g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN,szBhopCount,GRAY,LIMEGREEN, sync,PERCENT,GRAY);
 				if (g_js_OwnageJump_Count[client]==3)
@@ -1896,7 +1934,7 @@ public Postthink(client)
 					if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 						for (new i = 1; i <= MaxClients+1; i++) { 
 							if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-								EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+								ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 							}
 						}
 					}
@@ -1917,7 +1955,7 @@ public Postthink(client)
 				g_js_LeetJump_Count[client]++;
 				//Client
 				PrintToConsole(client, "        ");
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a MultiBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %s Bhops | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client], fJump_Height,szBhopCount,sync,PERCENT);
 				PrintToConsole(client, "%s", szStrafeStats);
 				PrintToChat(client, "%t", "ClientMultiBhop2",MOSSGREEN,WHITE,DARKRED,GRAY,DARKRED,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN,g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN,szBhopCount,GRAY,LIMEGREEN, sync,PERCENT,GRAY);
 				if (g_js_LeetJump_Count[client]==3)
@@ -1987,7 +2025,7 @@ public Postthink(client)
 				g_js_LeetJump_Count[client]=0;
 				PrintToChat(client, "%t", "ClientDropBhop1",MOSSGREEN,WHITE, GRAY,g_js_fJump_Distance[client],LIMEGREEN, strafes, GRAY, LIMEGREEN, g_js_fPreStrafe[client], GRAY, LIMEGREEN,fJump_Height,GRAY, LIMEGREEN,sync,PERCENT,GRAY);
 				PrintToConsole(client, "        ");
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 				PrintToConsole(client, "%s", szStrafeStats);
 			}
 			else
@@ -1998,7 +2036,7 @@ public Postthink(client)
 					Format(g_js_szLastJumpDistance[client], 256, "<font color='#21982a'><b>%.2f units</b></font>", g_js_fJump_Distance[client]);
 					PrintToConsole(client, "        ");
 					PrintToChat(client, "%t", "ClientDropBhop2",MOSSGREEN,WHITE,GREEN,GRAY,GREEN,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN,sync,PERCENT,GRAY);
-					PrintToConsole(client, "[Stats] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+					PrintToConsole(client, "[JS] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 					PrintToConsole(client, "%s", szStrafeStats);
 					decl String:buffer[255];
 					Format(buffer, sizeof(buffer), "play %s", PROJUMP_RELATIVE_SOUND_PATH);
@@ -2031,7 +2069,7 @@ public Postthink(client)
 						//Client
 						PrintToConsole(client, "        ");
 						PrintToChat(client, "%t", "ClientDropBhop2",MOSSGREEN,WHITE,YELLOW,GRAY,YELLOW,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-						PrintToConsole(client, "[Stats] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+						PrintToConsole(client, "[JS] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 						PrintToConsole(client, "%s", szStrafeStats);
 						if (g_js_OwnageJump_Count[client]==3)
 							PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,YELLOW,szName);
@@ -2059,7 +2097,7 @@ public Postthink(client)
 					if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 						for (new i = 1; i <= MaxClients+1; i++) { 
 							if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-								EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+								ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 							}
 						}
 					}
@@ -2081,7 +2119,7 @@ public Postthink(client)
 						//Client
 						PrintToConsole(client, "        ");
 						PrintToChat(client, "%t", "ClientDropBhop2",MOSSGREEN,WHITE,DARKRED,GRAY,DARKRED,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-						PrintToConsole(client, "[Stats] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+						PrintToConsole(client, "[JS] %s jumped %0.4f units with a DropBhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 						PrintToConsole(client, "%s", szStrafeStats);
 						if (g_js_LeetJump_Count[client]==3)
 							PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,YELLOW,szName);
@@ -2149,7 +2187,7 @@ public Postthink(client)
 					g_js_LeetJump_Count[client]=0;
 					PrintToChat(client, "%t", "ClientWeirdJump1",MOSSGREEN,WHITE, GRAY,g_js_fJump_Distance[client],LIMEGREEN, strafes, GRAY, LIMEGREEN, g_js_fPreStrafe[client], GRAY, LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
 					PrintToConsole(client, "        ");
-					PrintToConsole(client, "[Stats] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+					PrintToConsole(client, "[JS] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 					PrintToConsole(client, "%s", szStrafeStats);
 				}
 				//pro?
@@ -2161,7 +2199,7 @@ public Postthink(client)
 						//Client
 						PrintToConsole(client, "        ");
 						PrintToChat(client, "%t", "ClientWeirdJump2",MOSSGREEN,WHITE,GREEN,GRAY,GREEN,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-						PrintToConsole(client, "[Stats] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+						PrintToConsole(client, "[JS] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 						PrintToConsole(client, "%s", szStrafeStats);
 						decl String:buffer[255];
 						Format(buffer, sizeof(buffer), "play %s", PROJUMP_RELATIVE_SOUND_PATH);
@@ -2194,7 +2232,7 @@ public Postthink(client)
 							//Client
 							PrintToConsole(client, "        ");
 							PrintToChat(client, "%t", "ClientWeirdJump2",MOSSGREEN,WHITE,YELLOW,GRAY,YELLOW,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-							PrintToConsole(client, "[Stats] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+							PrintToConsole(client, "[JS] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 							PrintToConsole(client, "%s", szStrafeStats);
 							if (g_js_OwnageJump_Count[client]==3)
 								PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,YELLOW,szName);
@@ -2222,7 +2260,7 @@ public Postthink(client)
 					if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 						for (new i = 1; i <= MaxClients+1; i++) { 
 							if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-								EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+								ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 							}
 						}
 					}
@@ -2244,7 +2282,7 @@ public Postthink(client)
 							//Client
 							PrintToConsole(client, "        ");
 							PrintToChat(client, "%t", "ClientWeirdJump2",MOSSGREEN,WHITE,DARKRED,GRAY,DARKRED,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN,fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-							PrintToConsole(client, "[Stats] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+							PrintToConsole(client, "[JS] %s jumped %0.4f units with a WeirdJump [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 							PrintToConsole(client, "%s", szStrafeStats);
 							if (g_js_LeetJump_Count[client]==3)
 								PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,DARKRED,szName);
@@ -2304,7 +2342,7 @@ public Postthink(client)
 			g_js_LeetJump_Count[client]=0;
 			PrintToChat(client, "%t", "ClientBunnyhop1",MOSSGREEN,WHITE,GRAY, g_js_fJump_Distance[client],LIMEGREEN, strafes, GRAY, LIMEGREEN, g_js_fPreStrafe[client], GRAY, LIMEGREEN, fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
 			PrintToConsole(client, "        ");
-			PrintToConsole(client, "[Stats] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
+			PrintToConsole(client, "[JS] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height,sync,PERCENT);
 			PrintToConsole(client, "%s", szStrafeStats);
 		}
 		else
@@ -2315,7 +2353,7 @@ public Postthink(client)
 				g_js_LeetJump_Count[client]=0;
 				PrintToConsole(client, "        ");
 				PrintToChat(client, "%t", "ClientBunnyhop2",MOSSGREEN,WHITE,GREEN,GRAY,GREEN,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-				PrintToConsole(client, "[Stats] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
+				PrintToConsole(client, "[JS] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
 				PrintToConsole(client, "%s", szStrafeStats);
 				decl String:buffer[255];
 				Format(buffer, sizeof(buffer), "play %s", PROJUMP_RELATIVE_SOUND_PATH);
@@ -2349,7 +2387,7 @@ public Postthink(client)
 					//Client
 					PrintToConsole(client, "        ");
 					PrintToChat(client, "%t", "ClientBunnyhop2",MOSSGREEN,WHITE,YELLOW,GRAY,YELLOW,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-					PrintToConsole(client, "[Stats] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
+					PrintToConsole(client, "[JS] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
 					PrintToConsole(client, "%s", szStrafeStats);
 					if (g_js_OwnageJump_Count[client]==3)
 						PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,YELLOW,szName);
@@ -2377,7 +2415,7 @@ public Postthink(client)
 					if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 						for (new i = 1; i <= MaxClients+1; i++) { 
 							if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-								EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+								ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 							}
 						}
 					}
@@ -2411,7 +2449,7 @@ public Postthink(client)
 					//Client
 					PrintToConsole(client, "        ");
 					PrintToChat(client, "%t", "ClientBunnyhop2",MOSSGREEN,WHITE,DARKRED,GRAY,DARKRED,g_js_fJump_Distance[client],GRAY,LIMEGREEN,strafes,GRAY,LIMEGREEN,g_js_fPreStrafe[client],GRAY,LIMEGREEN, g_js_fMax_Speed_Final[client],GRAY,LIMEGREEN, fJump_Height,GRAY, LIMEGREEN, sync,PERCENT,GRAY);
-					PrintToConsole(client, "[Stats] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
+					PrintToConsole(client, "[JS] %s jumped %0.4f units with a Bhop [%i Strafes | %.3f Pre | %.3f Max | Height %.1f | %i%c Sync]",szName, g_js_fJump_Distance[client],strafes, g_js_fPreStrafe[client], g_js_fMax_Speed_Final[client],fJump_Height, sync,PERCENT);
 					PrintToConsole(client, "%s", szStrafeStats);
 					if (g_js_LeetJump_Count[client]==3)
 						PrintToChat(client, "%t", "Jumpstats_OnRampage",MOSSGREEN,WHITE,DARKRED,szName);
@@ -2596,15 +2634,14 @@ public Action:Client_Colorchat(client, args)
 	return Plugin_Handled;
 }
 
-// thank you vincent/kgn for this function
 public PlayOwnageJumpSound(client) {
 	if (g_js_OwnageJump_Count[client] == 3 || g_js_OwnageJump_Count[client] == 5) {
 		for (new i = 1; i <= MaxClients+1; i++) { 
 			if(IsValidClient(i) && !IsFakeClient(i) && i != client && g_bColorChat[i] && g_bEnableQuakeSounds[i]) {	
 				if (g_js_OwnageJump_Count[client]==3) {
-					EmitSoundToClient(i, LEETJUMP_RAMPAGE_RELATIVE_SOUND_PATH, i);
+					ClientCommand(i, "play %s", LEETJUMP_RAMPAGE_RELATIVE_SOUND_PATH);
 				} else if (g_js_OwnageJump_Count[client]==5) {
-					EmitSoundToClient(i, LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH, i);
+					ClientCommand(i, "play %s", LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH);
 				}
 			}
 		}
@@ -2614,19 +2651,19 @@ public PlayOwnageJumpSound(client) {
 		if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5) {
 			for (new i = 1; i <= MaxClients+1; i++) { 
 				if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-					EmitSoundToClient(i, OWNAGEJUMP_RELATIVE_SOUND_PATH, i);
+					ClientCommand(i, "play %s", OWNAGEJUMP_RELATIVE_SOUND_PATH);
 				}
 			}
 		} else if (g_js_OwnageJump_Count[client]==3) {
 			for (new i = 1; i <= MaxClients+1; i++) {
 				if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-					EmitSoundToClient(i, LEETJUMP_RAMPAGE_RELATIVE_SOUND_PATH, i);
+					ClientCommand(i, "play %s", LEETJUMP_RELATIVE_SOUND_PATH);
 				}
 			}
 		} else if (g_js_OwnageJump_Count[client]==5) {
 			for (new i = 1; i <= MaxClients+1; i++) {
 				if(IsValidClient(i) && !IsFakeClient(i) && g_bEnableQuakeSounds[i]) {
-					EmitSoundToClient(i, LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH, i);
+					ClientCommand(i, "play %s", LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH);
 				}
 			}
 		}
@@ -2680,56 +2717,7 @@ public PlayLeetJumpSound(client)
 			}
 	}
 }
-/*
-public PlayOwnageJumpSound(client)
-{
-	decl String:buffer[255];
 
-	//all sound
-	if (g_js_OwnageJump_Count[client] == 3 || g_js_OwnageJump_Count[client] == 5)
-	{
-		for (new i = 1; i <= MaxClients; i++)
-		{
-			if(IsValidClient(i) && !IsFakeClient(i) && i != client && g_bColorChat[i] && g_bEnableQuakeSounds[i])
-			{
-					if (g_js_OwnageJump_Count[client]==3)
-					{
-						Format(buffer, sizeof(buffer), "play %s", LEETJUMP_RAMPAGE_RELATIVE_SOUND_PATH);
-						ClientCommand(i, buffer);
-					}
-					else
-						if (g_js_OwnageJump_Count[client]==5)
-						{
-							Format(buffer, sizeof(buffer), "play %s", LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH);
-							ClientCommand(i, buffer);
-						}
-			}
-		}
-	}
-
-	//client sound
-	if 	(IsValidClient(client) && !IsFakeClient(client) && g_bEnableQuakeSounds[client])
-	{
-		if (g_js_OwnageJump_Count[client] != 3 && g_js_OwnageJump_Count[client] != 5)
-		{
-			Format(buffer, sizeof(buffer), "play %s", LEETJUMP_RELATIVE_SOUND_PATH);
-			ClientCommand(client, buffer);
-		}
-			else
-			if (g_js_OwnageJump_Count[client]==3)
-			{
-				Format(buffer, sizeof(buffer), "play %s", LEETJUMP_RAMPAGE_RELATIVE_SOUND_PATH);
-				ClientCommand(client, buffer);
-			}
-			else
-			if (g_js_OwnageJump_Count[client]==5)
-			{
-				Format(buffer, sizeof(buffer), "play %s", LEETJUMP_DOMINATING_RELATIVE_SOUND_PATH);
-				ClientCommand(client, buffer);
-			}
-	}
-}
-*/
 public ColorChat(client)
 {
 	if (g_bColorChat[client])
@@ -2901,7 +2889,7 @@ public SQL_viewBhop2RecordCallback2(Handle:owner, Handle:hndl, const String:erro
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_BhopTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_fPersonal_Bhop_Record[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_Bhop_Record[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_Bhop_Record[client]);
 				}
 			}
 		}
@@ -2927,7 +2915,7 @@ public SQL_viewDropBhop2RecordCallback2(Handle:owner, Handle:hndl, const String:
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_DropBhopTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_fPersonal_DropBhop_Record[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Drop-Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_DropBhop_Record[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Drop-Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_DropBhop_Record[client]);
 				}
 			}
 		}
@@ -2983,7 +2971,7 @@ public SQL_viewMultiBhop2RecordCallback2(Handle:owner, Handle:hndl, const String
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_MultiBhopTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_fPersonal_MultiBhop_Record[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Multi-Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_MultiBhop_Record[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Multi-Bunnyhop Top 20! [%.3f units]", szName, rank, g_js_fPersonal_MultiBhop_Record[client]);
 				}
 			}
 		}
@@ -3071,7 +3059,7 @@ public SQL_viewLjBlock2RecordCallback2(Handle:owner, Handle:hndl, const String:e
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_LjBlockTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_Personal_LjBlock_Record[client],g_js_fPersonal_LjBlockRecord_Dist[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Longjump 20! [%i units block/%.3f units jump]", szName, rank, g_js_Personal_LjBlock_Record[client],g_js_fPersonal_LjBlockRecord_Dist[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Longjump 20! [%i units block/%.3f units jump]", szName, rank, g_js_Personal_LjBlock_Record[client],g_js_fPersonal_LjBlockRecord_Dist[client]);
 				}
 			}
 		}
@@ -3098,7 +3086,7 @@ public SQL_viewLj2RecordCallback2(Handle:owner, Handle:hndl, const String:error[
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_LjTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_fPersonal_Lj_Record[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Longjump 20! [%.3f units]", szName, rank, g_js_fPersonal_Lj_Record[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Longjump 20! [%.3f units]", szName, rank, g_js_fPersonal_Lj_Record[client]);
 				}
 			}
 		}
@@ -3155,7 +3143,7 @@ public SQL_viewWj2RecordCallback2(Handle:owner, Handle:hndl, const String:error[
 				if(IsValidClient(i) && !IsFakeClient(i))
 				{
 					PrintToChat(i, "%t", "Jumpstats_WjTop", MOSSGREEN, WHITE, LIGHTYELLOW, szName, rank, g_js_fPersonal_Wj_Record[client]);
-					PrintToConsole(i, "[Stats] %s is now #%i in the Weirdjump 20! [%.3f units]", szName, rank, g_js_fPersonal_Wj_Record[client]);
+					PrintToConsole(i, "[JS] %s is now #%i in the Weirdjump 20! [%.3f units]", szName, rank, g_js_fPersonal_Wj_Record[client]);
 				}
 			}
 		}
@@ -3772,7 +3760,7 @@ public SQL_ViewJumpStatsCallback(Handle:owner, Handle:hndl, const String:error[]
 
 		if (bhoprecord >0.0 || ljrecord > 0.0 || multibhoprecord > 0.0 || wjrecord > 0.0 || dropbhoprecord > 0.0 || ljblockdist > 0)
 		{
-			Format(szVr, 255, "JS: %s\nType               Distance  Strafes Pre        Max      Height  Sync", szName);
+			Format(szVr, 255, "JS: %s\nSteamID: %s\nType               Distance  Strafes Pre        Max      Height  Sync", szName, szSteamId);
 			new Handle:menu = CreateMenu(JumpStatsMenuHandler);
 			SetMenuTitle(menu, szVr);
 			if (ljrecord > 0.0)
